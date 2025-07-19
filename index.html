@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syvi Chess Web</title>
+    <style>
+        /* --- CSS Styles --- */
+        body {
+            font-family: 'Inter', Arial, sans-serif; /* Using Inter font as per instructions */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box; /* Include padding in element's total width and height */
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px; /* Rounded corners on all elements */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 90%; /* Fluid width */
+            width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+            justify-content: center;
+            gap: 10px; /* Spacing between control elements */
+            margin-bottom: 20px;
+        }
+
+        .controls button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px; /* Rounded corners */
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .controls button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #moveInput {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px; /* Rounded corners */
+            font-size: 1em;
+            flex-grow: 1; /* Allows input to take available space */
+            max-width: 250px; /* Limit max width for input */
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 10px; /* Rounded corners */
+            background-color: #f9f9f9;
+            text-align: left;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .status h2 {
+            color: #555;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .status p {
+            margin: 8px 0;
+            line-height: 1.5;
+            font-size: 0.95em;
+        }
+
+        strong {
+            color: #555;
+            font-weight: 600;
+        }
+
+        span {
+            font-weight: normal;
+            color: #333;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+                gap: 15px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            .controls {
+                flex-direction: column; /* Stack buttons vertically on small screens */
+                align-items: stretch;
+            }
+            .controls button, #moveInput {
+                width: 100%; /* Full width for controls on small screens */
+                margin: 5px 0;
+            }
+            .status {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Syvi Chess Web Interface</h1>
+        <div id="chessboard-container">
+            <!-- This is where a visual chessboard would go (e.g., chessboard.js or a custom SVG/div board) -->
+            <p><strong>Chessboard Placeholder:</strong> A visual chessboard library (like <a href="https://chessboardjs.com/" target="_blank">chessboard.js</a>) would render here to show the board visually.</p>
+            <p>For now, you'll need to input moves manually below using <a href="https://en.wikipedia.org/wiki/Algebraic_notation_(chess)#Long_algebraic_notation" target="_blank">UCI notation</a> (e.g., <code>e2e4</code> for pawn e2 to e4).</p>
+        </div>
+        
+        <div class="controls">
+            <button onclick="startGame()">New Game</button>
+            <button onclick="undoMove()">Undo Last Move</button>
+            <input type="text" id="moveInput" placeholder="Enter move (e.g., e2e4)">
+            <button onclick="sendMove()">Make Move</button>
+        </div>
+
+        <div class="status">
+            <h2>Game Status:</h2>
+            <p><strong>FEN:</strong> <span id="fenDisplay"></span></p>
+            <p><strong>Turn:</strong> <span id="turnDisplay"></span></p>
+            <p><strong>Is Game Over:</strong> <span id="gameOverDisplay"></span></p>
+            <p><strong>Result:</strong> <span id="resultDisplay"></span></p>
+            <p><strong>Is Check:</strong> <span id="checkDisplay"></span></p>
+            <p><strong>Syvi Evaluation:</strong> <span id="syviEvalDisplay"></span></p>
+            <p><strong>Syvi Confidence:</strong> <span id="syviConfidenceDisplay"></span></p>
+            <p><strong>Message:</strong> <span id="messageDisplay"></span></p>
+        </div>
+    </div>
+
+    <script>
+        /* --- JavaScript Logic --- */
+
+        // Function to update the UI with game state
+        function updateUI(gameState, message = '') {
+            document.getElementById('fenDisplay').textContent = gameState.fen;
+            document.getElementById('turnDisplay').textContent = gameState.turn;
+            document.getElementById('gameOverDisplay').textContent = gameState.is_game_over ? 'Yes' : 'No';
+            document.getElementById('resultDisplay').textContent = gameState.result || 'N/A';
+            document.getElementById('checkDisplay').textContent = gameState.is_check ? 'Yes' : 'No';
+            document.getElementById('syviEvalDisplay').textContent = gameState.syvi_eval;
+            document.getElementById('syviConfidenceDisplay').textContent = gameState.syvi_confidence;
+            document.getElementById('messageDisplay').textContent = message;
+
+            // --- INTEGRATING A VISUAL CHESSBOARD (e.g., chessboard.js) ---
+            // If you were using chessboard.js (or similar), you would initialize it
+            // and then update its position here:
+            // Example:
+            // if (typeof board !== 'undefined') { // Check if board instance exists
+            //     board.position(gameState.fen);
+            // } else {
+            //     // Initialize board if it doesn't exist yet (e.g., on first load)
+            //     var cfg = {
+            //         draggable: true,
+            //         position: gameState.fen,
+            //         onDrop: onDrop // Your function to handle piece drops
+            //     };
+            //     board = Chessboard('chessboard-container', cfg);
+            // }
+            // You would also handle highlighting valid moves, last move, etc., here.
+            // For now, this is just a placeholder comment.
+        }
+
+        // Generic function to send POST requests to the Flask backend
+        async function postData(url, data = {}) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            // Check if the response is OK (status 200-299)
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+            return response.json();
+        }
+
+        // Get current game state from backend on page load
+        async function getGameState() {
+            try {
+                const response = await fetch('/api/get_state');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+                const data = await response.json();
+                if (data.success) {
+                    updateUI(data.game_state, 'Current game state loaded.');
+                } else {
+                    console.error("Failed to get game state:", data.message);
+                    alert("Error: " + data.message);
+                }
+            } catch (error) {
+                console.error("Error fetching game state:", error);
+                alert("Network error or server is down. Please ensure app.py is running.");
+            }
+        }
+
+        // Start a new game
+        async function startGame() {
+            try {
+                const data = await postData('/api/start_game');
+                if (data.success) {
+                    updateUI(data.game_state, data.message);
+                    document.getElementById('moveInput').value = ''; // Clear input field
+                } else {
+                    alert("Error starting game: " + data.message);
+                }
+            } catch (error) {
+                console.error("Error starting game:", error);
+                alert("Network error or server is down. Please ensure app.py is running.");
+            }
+        }
+
+        // Send a move to the backend
+        async function sendMove() {
+            const moveInput = document.getElementById('moveInput');
+            const move_uci = moveInput.value.trim();
+
+            if (!move_uci) {
+                alert("Please enter a move (e.g., e2e4).");
+                return;
+            }
+
+            try {
+                const data = await postData('/api/make_move', { move_uci: move_uci });
+                if (data.success) {
+                    updateUI(data.game_state, data.message);
+                    moveInput.value = ''; // Clear input field after move
+                } else {
+                    alert("Move failed: " + data.message);
+                    updateUI(data.game_state, data.message); // Update with error state if any
+                }
+            } catch (error) {
+                console.error("Error sending move:", error);
+                alert("Network error or server is down. Please ensure app.py is running.");
+            }
+        }
+
+        // Undo last move(s)
+        async function undoMove() {
+            try {
+                const data = await postData('/api/undo');
+                if (data.success) {
+                    updateUI(data.game_state, data.message);
+                } else {
+                    alert("Undo failed: " + data.message);
+                    updateUI(data.game_state, data.message);
+                }
+            } catch (error) {
+                console.error("Error undoing move:", error);
+                alert("Network error or server is down. Please ensure app.py is running.");
+            }
+        }
+
+        // You can add client-side speech here using Web Speech API:
+        /*
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                // You can set voice, pitch, and rate here for a human-like tone
+                // Example: Find a female voice
+                // const voices = window.speechSynthesis.getVoices();
+                // const femaleVoice = voices.find(voice => voice.name.includes('Female') || voice.name.includes('Zira') || voice.name.includes('Samantha'));
+                // if (femaleVoice) {
+                //     utterance.voice = femaleVoice;
+                // }
+                // utterance.rate = 0.9; // Slightly slower than default for natural feel
+                // utterance.pitch = 1; // Normal pitch
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.warn("Web Speech API not supported in this browser.");
+            }
+        }
+
+        // Example of how you might call it after a message is received from the backend
+        // You would integrate this into your updateUI function or specific API calls:
+        // In updateUI function, after getting AI's move and message:
+        // if (message.startsWith('Syvi moved') || message.includes('Game Over') || message.includes('Check')) {
+        //    speak(message);
+        // }
+        */
+
+        // Initial state load when page loads
+        document.addEventListener('DOMContentLoaded', getGameState);
+    </script>
+</body>
+</html>
